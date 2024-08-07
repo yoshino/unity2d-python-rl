@@ -1,0 +1,9 @@
+__pycache__
+temp
+data
+logs
+pyenv
+notes
+
+python-server/models/*
+!python-server/models/.gitkeep

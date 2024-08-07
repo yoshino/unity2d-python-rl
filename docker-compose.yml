@@ -4,5 +4,7 @@ services:
    python:
      build: ./python-server
      ports:
-       - "8000:8000"
-      tty: true
+       - "9000:9000/udp"
+     volumes:
+       - ./python-server:/usr/src/python-server
+     tty: true
