@@ -3,7 +3,11 @@ temp
 data
 logs
 pyenv
-notes
+
+notes/*
+!notes/deep_q_network
+notes/deep_q_network/models/*
+!notes/deep_q_network/models/.gitkeep
 
 python-server/models/*
 !python-server/models/.gitkeep
