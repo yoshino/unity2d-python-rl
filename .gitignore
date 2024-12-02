@@ -5,9 +5,9 @@ logs
 pyenv
 
 notes/*
-!notes/deep_q_network
-notes/deep_q_network/models/*
-!notes/deep_q_network/models/.gitkeep
+!notes/2013_deep_q_network
+notes/2013_deep_q_network/models/*
+!notes/2013_deep_q_network/models/.gitkeep
 
 python-server/models/*
 !python-server/models/.gitkeep
