@@ -7,10 +7,11 @@ from collections import deque, namedtuple
 import random
 import numpy as np
 
+
 # 画像は84x84をn_frame連結したものを想定している
-class DeepQNetwork(nn.Module):
+class DoubleDqn(nn.Module):
     def __init__(self, n_frame, n_actions):
-        super(DeepQNetwork, self).__init__()
+        super(DoubleDqn, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=n_frame, out_channels=32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1)
@@ -32,7 +33,7 @@ class DeepQNetwork(nn.Module):
         x = self.fc2(x)
         return x
 
-class DeepQNetworkAgent():
+class DoubleDqnAgent():
     def __init__(self, actions, device, n_frame=4,epsilon=1.0):
         self.epsilon = epsilon
         self.actions = actions
@@ -49,8 +50,8 @@ class DeepQNetworkAgent():
         self.device = device
 
     def initialize(self):
-        self.model = DeepQNetwork(self.n_frame, len(self.actions)).to(self.device)
-        self._teacher_model = DeepQNetwork(self.n_frame, len(self.actions)).to(self.device)
+        self.model = DoubleDqn(self.n_frame, len(self.actions)).to(self.device)
+        self._teacher_model = DoubleDqn(self.n_frame, len(self.actions)).to(self.device)
         self._teacher_model.load_state_dict(self.model.state_dict())
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.00025)
         self.initialized = True
@@ -63,7 +64,7 @@ class DeepQNetworkAgent():
     def load(cls, actions, model_path, device, n_frame=4, epsilon=0.0001):
         actions = actions
         agent = cls(epsilon=epsilon, actions=actions, device=device)
-        agent.model = DeepQNetwork(n_frame, len(actions)).to(device)
+        agent.model = DoubleDqn(n_frame, len(actions)).to(device)
         agent.model.load_state_dict(torch.load(model_path, map_location=device))
         agent.model.eval()
         agent.initialized = True
@@ -78,13 +79,30 @@ class DeepQNetworkAgent():
         # reward clipping
         rewards = torch.clamp(rewards, -1, 1)
 
-        # 次の状態での最大Q値の計算
+        # DQN
+        # with torch.no_grad():
+        #     next_q_values = self._teacher_model(next_states)
+        #     max_next_q_values = next_q_values.max(1)[0]
+        #     target_q_values = rewards + (1 - dones) * self.gamma * max_next_q_values
+
+        # Double DQN
+        # ポイントは、次の状態でのアクションの選択と、そのアクションの価値評価を分離すること
         with torch.no_grad():
             next_q_values = self._teacher_model(next_states)
             max_next_q_values = next_q_values.max(1)[0]
             target_q_values = rewards + (1 - dones) * self.gamma * max_next_q_values
+
+            # Next actions from the online model
+            next_q_values_online = self.model(next_states)
+            next_actions = next_q_values_online.argmax(dim=1)
+
+            # Evaluate next actions using the target network
+            next_q_values_target = self._teacher_model(next_states)
+            max_next_q_values = next_q_values_target.gather(1, next_actions.unsqueeze(1)).squeeze(1)
+
+            target_q_values = rewards + (1 - dones) * self.gamma * max_next_q_values
     
-        # 現在のQ値の計算
+        # # 現在のQ値の計算
         current_q_values = self.model(states).gather(1, actions.unsqueeze(1)).squeeze(1)
     
         # 損失の計算

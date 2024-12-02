@@ -9,5 +9,9 @@ notes/*
 notes/2013_deep_q_network/models/*
 !notes/2013_deep_q_network/models/.gitkeep
 
+!notes/2015_double_dqn
+notes/2015_double_dqn/models/*
+!notes/2015_double_dqn/models/.gitkeep
+
 python-server/models/*
 !python-server/models/.gitkeep
