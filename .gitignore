@@ -17,5 +17,9 @@ notes/2015_double_dqn/models/*
 notes/2016_dueling_network/models/*
 !notes/2016_dueling_network/models/.gitkeep
 
+!notes/2017_noisy_network
+notes/2017_noisy_network/models/*
+!notes/2017_noisy_network/models/.gitkeep
+
 python-server/models/*
 !python-server/models/.gitkeep
