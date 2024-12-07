@@ -29,5 +29,9 @@ notes/2016_dueling_network/models/*
 notes/2017_noisy_network/models/*
 !notes/2017_noisy_network/models/.gitkeep
 
+!notes/2018_td3
+notes/2018_td3/models/*
+!notes/2018_td3/models/.gitkeep
+
 python-server/models/*
 !python-server/models/.gitkeep
