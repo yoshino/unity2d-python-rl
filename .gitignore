@@ -33,5 +33,9 @@ notes/2017_noisy_network/models/*
 notes/2018_td3/models/*
 !notes/2018_td3/models/.gitkeep
 
+!notes/2018_soft_actor_critic
+notes/2018_soft_actor_critic/models/*
+!notes/2018_soft_actor_critic/models/.gitkeep
+
 python-server/models/*
 !python-server/models/.gitkeep
