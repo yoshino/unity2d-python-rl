@@ -6,7 +6,8 @@ import gymnasium as gym
 class PendulumObserver():
     def __init__(self, play=False):
         if play:
-            self._env = gym.make("Pendulum-v1", render_mode="human")
+            # self._env = gym.make("Pendulum-v1", render_mode="human")
+            self._env = gym.make("Pendulum-v1")
         else:
             self._env = gym.make("Pendulum-v1")
 
@@ -28,6 +29,7 @@ class PendulumObserver():
     def step(self, action):
         # エピソードの終了条件はなく、総時刻(行動回数)が200を超えると、
         # 打ち切りフラグtruncatedがTrue(エピソードが打ち切り)になります。
-        state, reward, _, done, _ = self._env.step(action)
+        state, reward, terminated, truncated, _ = self._env.step(action)
+        done = terminated or truncated
 
         return state, reward, done
