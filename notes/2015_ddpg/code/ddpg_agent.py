@@ -122,11 +122,11 @@ class DDPGAgent:
         action = np.clip(action, -self.actor_network.ACTION_RANGE, self.actor_network.ACTION_RANGE)
         return action
 
-    def update(self, states, actions, rewards, next_states, dones):
+    def update(self, states, actions, rewards, next_states, masks):
         with torch.no_grad():
             next_actions = self.target_actor_network(next_states)
             next_qvalues = self.target_critic_network(next_states, next_actions)
-            target_values = rewards + self.gamma * (1 - dones) * next_qvalues
+            target_values = rewards + self.gamma * masks * next_qvalues
 
         # Update Critic Network
         qvalues = self.critic_network(states, actions)
@@ -166,3 +166,26 @@ class DDPGAgent:
 
     def reset_noise(self):
         self.noise.reset()
+
+    def play(self, env, episode_count=10, render=True):
+        self.actor_network.eval()
+
+        for i in range(episode_count):
+            s = env.reset()
+
+            done = False
+            episode_rewards = []
+
+            while not done:
+                a = self.policy(s)
+
+                n_state, reward, done = env.step(a)
+                episode_rewards.append(reward)
+
+                s = n_state
+
+                if render:
+                    env.render()
+
+            # エピソード終了処理
+            print(f'episode {i}: {sum(episode_rewards)}')

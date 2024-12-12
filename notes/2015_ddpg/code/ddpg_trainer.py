@@ -2,23 +2,24 @@ import re
 import random
 import numpy as np
 from collections import deque, namedtuple
+import torch
 
 from .ddpg_agent import DDPGAgent
-from .replay_buffer import ReplayBuffer
+from .replay_buffer import ReplayMemory
 
 class DDPGTrainer():
     def __init__(
         self, model_path, device, 
-        buffer_size=6000000, 
-        batch_size=64, tau=0.001, gamma=0.99,
-        warmup_steps=10000
+        buffer_size=100000, 
+        batch_size=256, tau=0.005, gamma=0.99,
+        warmup_steps=1000
     ):
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.gamma = gamma
         self.tau = tau
-        self.episode_count = 200000
-        self.replay_buffer = ReplayBuffer(max_len=buffer_size, device=device)
+        self.episode_count = 100
+        self.memory = ReplayMemory(buffer_size)
         self.model_path = model_path
         self.device = device
         self.max_episode_reward = -10
@@ -43,7 +44,6 @@ class DDPGTrainer():
             agent.reset_noise()  # エージェント側でノイズリセット
             done = False
             episode_reward = 0.0
-            episode_step_count = 0
 
             while not done:
                 if self.total_steps < self.warmup_steps:
@@ -54,34 +54,34 @@ class DDPGTrainer():
                     a = agent.policy(s)
 
                 n_state, reward, done = env.step(a)
-                self.total_steps += 1
-                episode_step_count += 1
+
+                if len(self.memory) > self.batch_size:
+                    states, actions, rewards, next_states, masks = self.memory.sample(batch_size=self.batch_size)
+                    states = torch.FloatTensor(states).to(self.device)
+                    next_states = torch.FloatTensor(next_states).to(self.device)
+                    actions = torch.FloatTensor(actions).to(self.device)
+                    rewards = torch.FloatTensor(rewards).unsqueeze(1).to(self.device)
+                    masks = torch.FloatTensor(masks).unsqueeze(1).to(self.device)
+                    agent.update(states, actions, rewards, next_states, masks)
+
                 episode_reward += reward
-
-                transition = (s, a, reward, n_state, done)
-                self.replay_buffer.push(transition)
+                self.total_steps += 1
                 self.episode_rewards.append(reward)
-
-                if self.total_steps > self.warmup_steps:
-                    states, actions, rewards, next_states, dones = self.replay_buffer.get_minibatch(self.batch_size)
-                    # agentの学習更新
-                    agent.update(states, actions, rewards, next_states, dones)
-                    # ターゲットネットワークの更新
-                    agent.update_target_network()
+                self.memory.push(state=s, action=a, reward=reward, next_state=n_state, mask=float(not done))
 
                 s = n_state
 
             # エピソード終了処理
-            self.episode_end(episode=i, agent=agent, episode_reward=episode_reward, episode_step_count=episode_step_count)
+            self.episode_end(episode=i, agent=agent, episode_reward=episode_reward)
 
         actor_model_path = self.model_path.replace('.pth', '_{}.pth'.format('final_actor'))
         critic_model_path = self.model_path.replace('.pth', '_{}.pth'.format('final_critic'))
         agent.save(actor_model_path=actor_model_path, critic_model_path=critic_model_path)
         print('final model saved: ', actor_model_path + ' and ' + critic_model_path)
 
-    def episode_end(self, episode, agent, episode_reward, episode_step_count):
+    def episode_end(self, episode, agent, episode_reward):
         sum_reward = sum(self.episode_rewards)
-        print('episode: {}, step_count: {}, sum_reward: {}'.format(episode, episode_step_count, sum_reward))
+        print('episode: {}, sum_reward: {}'.format(episode, sum_reward))
 
         if sum_reward > self.max_episode_reward:
             actor_model_path = self.model_path.replace('.pth', '_{}.pth'.format('best_actor'))

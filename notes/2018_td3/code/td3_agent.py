@@ -125,7 +125,7 @@ class TD3Agent:
 
         return action
 
-    def update(self, states, actions, rewards, next_states, dones, update_policy):
+    def update(self, states, actions, rewards, next_states, masks, update_policy):
         with torch.no_grad():
             clipped_noise = torch.normal(mean=0.0, std=0.2, size=(self.action_dim,), device=self.device)
             clipped_noise = torch.clamp(clipped_noise, min=-0.5, max=0.5)  # Tensorとしてclampを適用
@@ -134,7 +134,7 @@ class TD3Agent:
 
             q1_next, q2_next = self.target_critic_network(next_states, next_actions)
             min_q_next = torch.min(q1_next, q2_next)
-            target_values = rewards + self.gamma * (1 - dones) * min_q_next
+            target_values = rewards + self.gamma * masks * min_q_next
     
         # Update Critic Network
         q1, q2 = self.critic_network(states, actions)
@@ -177,3 +177,26 @@ class TD3Agent:
         agent.critic_network.load_state_dict(torch.load(critic_model_path, map_location=device))
         agent._build_networks()
         return agent
+
+    def play(self, env, episode_count=10, render=True):
+        self.actor_network.eval()
+
+        for i in range(episode_count):
+            s = env.reset()
+
+            done = False
+            episode_rewards = []
+
+            while not done:
+                a = self.policy(s)
+
+                n_state, reward, done = env.step(a)
+                episode_rewards.append(reward)
+
+                s = n_state
+
+                if render:
+                    env.render()
+
+            # エピソード終了処理
+            print(f'episode {i}: {sum(episode_rewards)}')

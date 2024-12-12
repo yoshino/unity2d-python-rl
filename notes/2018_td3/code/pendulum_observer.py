@@ -6,7 +6,8 @@ import gymnasium as gym
 class PendulumObserver():
     def __init__(self, play=False):
         if play:
-            self._env = gym.make("Pendulum-v1", render_mode="human")
+            # self._env = gym.make("Pendulum-v1", render_mode="human")
+            self._env = gym.make("Pendulum-v1")
         else:
             self._env = gym.make("Pendulum-v1")
 
