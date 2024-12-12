@@ -5,7 +5,6 @@ import numpy as np
 from collections import deque, namedtuple
 
 from .sac_agent import SACAgent
-from .replay_buffer import ReplayBuffer
 from .replay_buffer import ReplayMemory
 
 class SACTrainer():
@@ -46,9 +45,6 @@ class SACTrainer():
             episode_reward = 0.0
 
             while not done:
-                # s = torch.tensor(s, dtype=torch.float32).to(self.device)
-                # s = s.unsqueeze(0)  # バッチ次元を追加( shape: [1, state_dim] )
-
                 if self.total_steps > self.warmup_steps:
                     a = agent.policy(s)
                 else:
