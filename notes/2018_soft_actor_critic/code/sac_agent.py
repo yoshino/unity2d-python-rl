@@ -10,7 +10,7 @@ LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
 epsilon = 1e-6
 
-# NEW CRITIC CLASS
+# CRITIC CLASS
 class ClippedCriticNet(nn.Module):
 
     def __init__(self, action_dim, state_dim, output_dim=1, hidden_size=256):
@@ -40,7 +40,7 @@ class ClippedCriticNet(nn.Module):
 
         return x1, x2
 
-# NER ACTOR CLASS
+# ACTOR CLASS: 方策ネットワーク
 class SoftActorNet(nn.Module):
 
     def __init__(self, input_dim, output_dim, hidden_size, action_scale):
@@ -65,12 +65,19 @@ class SoftActorNet(nn.Module):
         return mean, log_std
 
     def sample(self, state):
+        # Reparameterization trick
+        # 1. 状態ｓをガウス方策関数に与えてアクション分布の平均（μ）と標準偏差（σ）を得る
+        # 2. 正規分布 N（μ、σ）からのサンプリングにより確率的にアクションaを決定する。
+        # 3. 決定したアクションaと状態sをQ関数に与えてQ(s, a)を計算する
         mean, log_std = self.forward(state)
         std = log_std.exp()
         normal = Normal(mean, std)
         x_t = normal.rsample()
         y_t = torch.tanh(x_t)
-        action = y_t * self.action_scale + self.action_bias
+        action = y_t * self.action_scale + self.action_bias # シンプルなガウス分布と仮定している
+
+        # Squashed Gaussian Policy
+        # ガウス分布を-1から1の範囲に押しつぶされた（Squashed）ような分布に変換する
         log_prob = normal.log_prob(x_t)
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + epsilon)
         log_prob = log_prob.sum(1, keepdim=True)
@@ -110,17 +117,12 @@ class SACAgent:
         # 確率的方策は任意の形式が使用可能ですが、論文で単ガウス方策が使用されているのでこれに倣います。
         # SAC論文の初期versionでは混合ガウス分布を使っていましたがmujuco環境では単ガウスでも混合ガウスでもあまりパフォーマンスに影響が無いようです。
         # REF: https://openreview.net/pdf?id=HJjvxl-Cb
-        # self.policy = GaussianPolicy(
-        #     action_space=self.action_dim, action_bound=self.action_bound
-        # ).to(self.device)
         self.actor = SoftActorNet(
             input_dim=self.state_dim, output_dim=self.action_dim, hidden_size=256, action_scale=action_bound
         )
         self.actor.to(self.device)
         # Critic Network
         # TD3で提案されたClipped-Double-Qトリックを適用
-        # self.dualqnet = DualQNetwork(state_dim=self.state_dim, action_dim=self.action_dim).to(self.device)
-        # self.target_dualqnet = DualQNetwork(state_dim=self.state_dim, action_dim=self.action_dim).to(self.device)
         self.dualqnet = ClippedCriticNet(state_dim=self.state_dim, action_dim=self.action_dim, hidden_size=256).to(self.device)
         self.target_dualqnet = ClippedCriticNet(state_dim=self.state_dim, action_dim=self.action_dim, hidden_size=256).to(self.device)
 
